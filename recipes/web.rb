@@ -1,5 +1,3 @@
-include_recipe "apache2::mod_python"
-
 version = node[:graphite][:version]
 pyver = node[:graphite][:python_version]
 
@@ -26,26 +24,31 @@ execute "install graphite-web" do
   cwd "/usr/src/graphite-web-#{version}"
 end
 
-template "/etc/apache2/sites-available/graphite" do
-  source "graphite-vhost.conf.erb"
+case node["graphite"]["webserver_flavour"]
+when "nginx"
+  include_recipe 'graphite::_web_nginx'
+  owner = node['nginx']['user']
+  group = node['nginx']['group']
+else
+  include_recipe 'graphite::_web_apache'
+  owner = node['apache']['user']
+  group = node['apache']['group']
 end
 
-apache_site "graphite"
-
 directory "/opt/graphite/storage" do
-  owner node['apache']['user']
-  group node['apache']['group']
+  owner owner
+  group group
 end
 
 directory '/opt/graphite/storage/log' do
-  owner node['apache']['user']
-  group node['apache']['group']
+  owner owner
+  group group
 end
 
 %w{ webapp whisper }.each do |dir|
   directory "/opt/graphite/storage/log/#{dir}" do
-    owner node['apache']['user']
-    group node['apache']['group']
+    owner owner
+    group group
   end
 end
 
@@ -64,7 +67,7 @@ execute "set admin password" do
 end
 
 file "/opt/graphite/storage/graphite.db" do
-  owner node['apache']['user']
-  group node['apache']['group']
+  owner owner
+  group group
   mode "644"
 end
